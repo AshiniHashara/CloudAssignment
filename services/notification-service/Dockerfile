@@ -1,4 +1,5 @@
-# ---- Stage 1: Install dependencies ----
+# Build and runtime for notification-service
+# Local verification: docker build -t cloudmart/notification-service ./services/notification-service
 FROM node:20-alpine AS builder
 
 WORKDIR /build
