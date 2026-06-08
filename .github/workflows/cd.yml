@@ -1,0 +1,53 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main, develop]
+
+permissions:
+  contents: write
+
+jobs:
+  update-gitops-manifests:
+    name: Bump Helm image tags (triggers ArgoCD sync)
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+
+      - name: Bump image tag for every service's environment values file
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          if [ "$BRANCH" = "main" ]; then
+            ENV_FILE_SUFFIX="prod"
+          else
+            ENV_FILE_SUFFIX="staging"
+          fi
+
+          for service in product-service order-service user-service notification-service frontend; do
+            VALUES_FILE="k8s/charts/${service}/values-${ENV_FILE_SUFFIX}.yaml"
+            if [ -f "$VALUES_FILE" ]; then
+              sed -i -E "s/^( *tag: ).*/\1\"${SHA}\"/" "$VALUES_FILE"
+            fi
+          done
+
+      - name: Commit & push (ArgoCD watches this branch and syncs automatically)
+        env:
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          git config user.name "cloudmart-cd-bot"
+          git config user.email "cd-bot@cloudmart.internal"
+          git add k8s/charts/*/values-prod.yaml k8s/charts/*/values-staging.yaml
+          if git diff --cached --quiet; then
+            echo "No image tag changes to commit"
+            exit 0
+          fi
+          git commit -m "ci: bump image tags to ${SHA}"
+          git push origin "HEAD:${BRANCH}"
