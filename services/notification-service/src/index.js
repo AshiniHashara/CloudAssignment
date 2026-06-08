@@ -203,6 +203,7 @@ async function pollCloudQueue() {
 }
 
 // Start polling loop
+// The interval can be adjusted via POLL_INTERVAL_MS environment variable (default: 5000ms)
 const POLL_INTERVAL_MS = parseInt(process.env.POLL_INTERVAL_MS || '5000', 10);
 
 function startPolling() {
