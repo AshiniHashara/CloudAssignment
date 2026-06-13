@@ -16,7 +16,7 @@ resource "aws_subnet" "public" {
   for_each                = { "1a" = "10.0.1.0/24", "1b" = "10.0.2.0/24" }
   vpc_id                  = aws_vpc.main.id
   cidr_block              = each.value
-  availability_zone       = "us-east-1${each.key}"
+  availability_zone       = "us-east-${each.key}"
   map_public_ip_on_launch = true
   tags = merge(var.common_tags, {
     Name                     = "cloudmart-public-${each.key}"
@@ -29,7 +29,7 @@ resource "aws_subnet" "private_app" {
   for_each          = { "1a" = "10.0.11.0/24", "1b" = "10.0.12.0/24" }
   vpc_id            = aws_vpc.main.id
   cidr_block        = each.value
-  availability_zone = "us-east-1${each.key}"
+  availability_zone = "us-east-${each.key}"
   tags = merge(var.common_tags, {
     Name                              = "cloudmart-private-app-${each.key}"
     "kubernetes.io/role/internal-elb" = "1"
@@ -42,7 +42,7 @@ resource "aws_subnet" "private_data" {
   for_each          = { "1a" = "10.0.21.0/24", "1b" = "10.0.22.0/24" }
   vpc_id            = aws_vpc.main.id
   cidr_block        = each.value
-  availability_zone = "us-east-1${each.key}"
+  availability_zone = "us-east-${each.key}"
   tags = merge(var.common_tags, { Name = "cloudmart-private-data-${each.key}" })
 }
 
@@ -168,4 +168,29 @@ resource "aws_flow_log" "main" {
   iam_role_arn    = aws_iam_role.flow_logs.arn
   log_destination = aws_cloudwatch_log_group.flow_logs.arn
   tags            = merge(var.common_tags, { Name = "cloudmart-flow-log" })
+}
+
+resource "aws_iam_role" "flow_logs" {
+  name = "cloudmart-vpc-flow-logs-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "vpc-flow-logs.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "flow_logs" {
+  name = "cloudmart-flow-logs-policy"
+  role = aws_iam_role.flow_logs.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["logs:CreateLogGroup","logs:CreateLogStream","logs:PutLogEvents","logs:DescribeLogGroups","logs:DescribeLogStreams"]
+      Resource = "*"
+    }]
+  })
 }
