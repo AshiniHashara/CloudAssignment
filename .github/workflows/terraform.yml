@@ -10,6 +10,7 @@ on:
     paths:
       - 'infra/environments/prod/**'
       - 'infra/modules/**'
+  workflow_dispatch: {}
 
 permissions:
   id-token: write
