@@ -55,7 +55,8 @@ resource "aws_iam_role" "github_actions" {
           "token.actions.githubusercontent.com:sub" = [
             "repo:${local.repo}:ref:refs/heads/main",
             "repo:${local.repo}:ref:refs/heads/develop",
-            "repo:${local.repo}:pull_request"
+            "repo:${local.repo}:pull_request",
+            "repo:${local.repo}:environment:production"
           ]
         }
       }
