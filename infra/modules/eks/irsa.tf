@@ -141,6 +141,38 @@ resource "aws_iam_role_policy" "user_service" {
   })
 }
 
+# KEDA operator: reads SQS queue depth to scale notification-service via the aws-sqs-queue trigger
+resource "aws_iam_role" "keda_operator" {
+  name = "cloudmart-keda-operator-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Federated = aws_iam_openid_connect_provider.eks.arn }
+      Action    = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "${local.oidc_issuer}:sub" = "system:serviceaccount:keda:keda-operator"
+          "${local.oidc_issuer}:aud" = "sts.amazonaws.com"
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "keda_operator" {
+  name = "cloudmart-keda-operator-policy"
+  role = aws_iam_role.keda_operator.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["sqs:GetQueueAttributes"]
+      Resource = var.sqs_orders_queue_arn
+    }]
+  })
+}
+
 # AWS Load Balancer Controller: manages ALBs/NLBs created from Ingress/Service resources
 resource "aws_iam_role" "alb_controller" {
   name = "cloudmart-alb-controller-role"
