@@ -6,7 +6,7 @@ metadata:
 spec:
   podIdentity:
     provider: aws-eks
-    identityOwner: keda
+    identityOwner: workload
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject

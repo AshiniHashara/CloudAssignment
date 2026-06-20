@@ -70,16 +70,26 @@ resource "aws_iam_role" "notification_service" {
   name = "cloudmart-notification-service-role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = { Federated = aws_iam_openid_connect_provider.eks.arn }
-      Action    = "sts:AssumeRoleWithWebIdentity"
-      Condition = {
-        StringEquals = {
-          "${local.oidc_issuer}:sub" = [for ns in local.namespaces : "system:serviceaccount:${ns}:notification-service"]
+    Statement = [
+      {
+        Effect    = "Allow"
+        Principal = { Federated = aws_iam_openid_connect_provider.eks.arn }
+        Action    = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = {
+            "${local.oidc_issuer}:sub" = [for ns in local.namespaces : "system:serviceaccount:${ns}:notification-service"]
+          }
         }
+      },
+      {
+        # KEDA's (deprecated) aws-eks pod identity provider chain-assumes the
+        # scaled workload's own IRSA role for metric polling, regardless of
+        # the TriggerAuthentication's identityOwner setting.
+        Effect    = "Allow"
+        Principal = { AWS = aws_iam_role.keda_operator.arn }
+        Action    = "sts:AssumeRole"
       }
-    }]
+    ]
   })
 }
 
