@@ -117,6 +117,9 @@ module "eks" {
   sqs_orders_queue_arn   = module.sqs.queue_arn
   rds_secret_arn         = module.secrets.rds_secret_arn
   velero_bucket_arn      = module.backup.bucket_arn
+
+  github_actions_role_arn = var.github_actions_role_arn
+  cluster_admin_user_arns = var.cluster_admin_user_arns
 }
 
 module "waf" {

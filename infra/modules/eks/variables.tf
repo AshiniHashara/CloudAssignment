@@ -33,3 +33,14 @@ variable "rds_secret_arn" {
 variable "velero_bucket_arn" {
   type = string
 }
+
+variable "github_actions_role_arn" {
+  type        = string
+  description = "IAM role ARN assumed by the GitHub Actions CI/CD pipeline. Mapped to system:masters in aws-auth so the pipeline (the cluster's creator) keeps cluster-admin access declaratively instead of relying on EKS's implicit creator grant."
+}
+
+variable "cluster_admin_user_arns" {
+  type        = list(string)
+  description = "IAM user ARNs granted kubectl cluster-admin access via aws-auth (e.g. team members' local AWS CLI users)."
+  default     = []
+}
