@@ -21,10 +21,13 @@ resource "aws_db_instance" "postgres" {
 
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [var.rds_sg_id]
-  multi_az               = var.environment == "prod" ? true : false
-  publicly_accessible    = false
+  # This account enforces AWS Free Tier restrictions: Multi-AZ and >1-day backup
+  # retention both fail with FreeTierRestrictionError regardless of environment.
+  # See ADR-002 for the documented tradeoff.
+  multi_az            = false
+  publicly_accessible = false
 
-  backup_retention_period   = var.environment == "prod" ? 7 : 1
+  backup_retention_period   = 1
   backup_window             = "02:00-03:00"
   maintenance_window        = "sun:04:00-sun:05:00"
   deletion_protection       = var.environment == "prod" ? true : false

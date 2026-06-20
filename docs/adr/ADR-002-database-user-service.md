@@ -20,15 +20,21 @@ Key requirements:
 
 ## Decision
 
-We selected **Amazon RDS for PostgreSQL** (db.t3.micro, Multi-AZ for production) as the
-managed relational database for the `user-service`.
+We selected **Amazon RDS for PostgreSQL** (db.t3.micro) as the managed relational
+database for the `user-service`.
 
 Configuration:
 - Engine: PostgreSQL 15
 - Instance class: `db.t3.micro` (2 vCPU, 1 GB RAM) — Free Tier eligible
-- Storage: 20 GB gp3, encrypted with the project KMS key
-- Multi-AZ: enabled in production for automatic failover
-- Automated backups: 7-day retention with point-in-time recovery enabled
+- Storage: 20 GB gp2, encrypted with the project KMS key
+- Multi-AZ: **disabled** — this account enforces AWS Free Tier restrictions and
+  rejects Multi-AZ RDS instances outright (`FreeTierRestrictionError` on
+  `CreateDBInstance`), confirmed on the first real `terraform apply`. Originally
+  planned as enabled for production (see "Negative" below); not actually
+  available on this account regardless of environment.
+- Automated backups: 1-day retention — the same account restriction also
+  rejects `backup_retention_period > 1` with `FreeTierRestrictionError`;
+  originally planned as 7 days for production.
 - Parameter group: `ssl=1` enforced (rejects unencrypted connections)
 - Credentials stored in AWS Secrets Manager; user-service retrieves them via IRSA
 
@@ -40,10 +46,14 @@ Configuration:
 - The user-service starter code already uses SQLAlchemy ORM with a PostgreSQL adapter;
   minimal code changes required to swap from the in-memory store
 - RDS Free Tier (db.t3.micro, 20 GB) means zero additional cost during the project period
-- Point-in-time recovery covers the assignment's 7-day backup retention requirement (Section 3.9)
-- Multi-AZ deployment satisfies the recommended multi-zone failover requirement
+- Point-in-time recovery is still available within the 1-day backup window this account allows
 
 **Negative:**
+- No Multi-AZ failover and only 1-day backup retention — this account's Free
+  Tier enforcement blocks both regardless of environment, so the demo's
+  disaster-recovery story relies entirely on the 1-day automated backup window
+  plus the separate Velero-based K8s backup (`infra/modules/backup`), not RDS
+  Multi-AZ failover as originally planned.
 - RDS requires placement in the private data subnet and a Security Group allowing port 5432
   from EKS nodes only; this adds infrastructure complexity (already handled by Terraform modules)
 - db.t3.micro has limited RAM (1 GB); connection pooling must be used (PgBouncer or

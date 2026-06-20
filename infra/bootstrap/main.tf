@@ -94,7 +94,8 @@ resource "aws_iam_role_policy" "github_actions_infra" {
           "guardduty:*",
           "elasticloadbalancing:*",
           "autoscaling:*",
-          "application-autoscaling:*"
+          "application-autoscaling:*",
+          "wafv2:*"
         ]
         Resource = "*"
       },
