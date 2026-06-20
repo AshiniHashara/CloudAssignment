@@ -1,6 +1,6 @@
 resource "aws_wafv2_web_acl" "cloudmart" {
   name        = "cloudmart-waf"
-  description = "WAF for the CloudMart ALB — managed rule sets only"
+  description = "WAF for the CloudMart ALB - managed rule sets only"
   scope       = "REGIONAL"
 
   default_action {
