@@ -1,0 +1,94 @@
+name: Terraform Infrastructure
+
+on:
+  pull_request:
+    paths:
+      - 'infra/environments/prod/**'
+      - 'infra/modules/**'
+  push:
+    branches: [main]
+    paths:
+      - 'infra/environments/prod/**'
+      - 'infra/modules/**'
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  TF_WORKING_DIR: infra/environments/prod
+
+jobs:
+  plan:
+    name: Validate & Plan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+
+      - name: Terraform fmt check
+        run: terraform fmt -check -recursive infra/
+        continue-on-error: true
+
+      - name: Terraform init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init
+
+      - name: Terraform validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform validate
+
+      - name: Terraform plan
+        id: plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan -input=false -no-color -out=tfplan.binary | tee plan_output.txt
+
+      - name: Publish plan to job summary
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          echo "## Terraform Plan (\`infra/environments/prod\`)" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat plan_output.txt >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: ${{ env.TF_WORKING_DIR }}/tfplan.binary
+          retention-days: 5
+
+  apply:
+    name: Apply (production)
+    needs: plan
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+
+      - name: Terraform init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init
+
+      - name: Terraform apply
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform apply -input=false -auto-approve

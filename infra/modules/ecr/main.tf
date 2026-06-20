@@ -1,3 +1,4 @@
+data "aws_caller_identity" "current" {}
 locals {
   services = ["product-service", "order-service", "user-service", "notification-service", "frontend"]
 }
