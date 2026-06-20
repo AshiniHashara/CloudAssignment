@@ -103,6 +103,7 @@ jobs:
           CLUSTER_NAME=$(terraform output -raw eks_cluster_name)
           aws eks update-kubeconfig --name "$CLUSTER_NAME" --region "$AWS_REGION"
           kubectl apply -f ../../../k8s/argocd/applications/
+          kubectl delete application cloudmart-prod cloudmart-staging -n argocd --ignore-not-found
 
       - name: Record WAF ACL ARN in the frontend chart's prod values
         working-directory: ${{ env.TF_WORKING_DIR }}
