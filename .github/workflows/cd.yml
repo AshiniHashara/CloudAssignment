@@ -107,13 +107,13 @@ jobs:
           echo "NAMESPACE=$NAMESPACE" >> "$GITHUB_ENV"
 
           HOSTNAME=""
-          for i in $(seq 1 20); do
+          for i in $(seq 1 5); do
             HOSTNAME=$(kubectl get ingress -n "$NAMESPACE" -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
             if [ -n "$HOSTNAME" ]; then
               break
             fi
-            echo "Ingress not ready yet (attempt $i/20), waiting 15s for ArgoCD sync + ALB provisioning..."
-            sleep 15
+            echo "Ingress not ready yet (attempt $i/5), waiting 10s..."
+            sleep 10
           done
 
           if [ -z "$HOSTNAME" ]; then
@@ -131,6 +131,25 @@ jobs:
             echo "## ArgoCD Applications"
             echo '```'
             kubectl get applications -n argocd -o wide 2>&1 || true
+            echo '```'
+
+            echo "## ArgoCD Application conditions/errors (cloudmart-prod)"
+            echo '```'
+            kubectl get application cloudmart-prod -n argocd -o jsonpath='{.status.conditions}' 2>&1 || true
+            echo ""
+            kubectl get application cloudmart-prod -n argocd -o jsonpath='{.status.operationState}' 2>&1 || true
+            echo '```'
+
+            echo "## ArgoCD Application conditions/errors (cloudmart-staging)"
+            echo '```'
+            kubectl get application cloudmart-staging -n argocd -o jsonpath='{.status.conditions}' 2>&1 || true
+            echo ""
+            kubectl get application cloudmart-staging -n argocd -o jsonpath='{.status.operationState}' 2>&1 || true
+            echo '```'
+
+            echo "## ArgoCD repo-server logs"
+            echo '```'
+            kubectl logs -n argocd -l app.kubernetes.io/name=argocd-repo-server --tail=80 2>&1 || true
             echo '```'
 
             echo "## Pods in $NAMESPACE"
