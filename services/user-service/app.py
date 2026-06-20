@@ -123,7 +123,7 @@ class PostgresUserStore:
         self.dbname = os.environ.get("DB_NAME")
         self.user = os.environ.get("DB_USER")
         self.password = os.environ.get("DB_PASSWORD")
-        
+
         self._init_db()
 
     def _get_connection(self):
@@ -206,13 +206,13 @@ class PostgresUserStore:
                     if key in data:
                         updates.append(f"{key} = %s")
                         params.append(data[key])
-                
+
                 if not updates:
                     return self.find_by_id(user_id)
-                
+
                 updates.append("updatedAt = %s")
                 params.append(datetime.utcnow().isoformat() + "Z")
-                
+
                 params.append(user_id)
                 query = f"UPDATE users SET {', '.join(updates)} WHERE id = %s RETURNING *"
                 cur.execute(query, tuple(params))

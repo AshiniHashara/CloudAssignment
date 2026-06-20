@@ -234,11 +234,13 @@ app.get('/notifications', (req, res) => {
 // Start server + polling
 // ---------------------------------------------------------------------------
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`[notification-service] Health endpoint on port ${PORT}`);
-  console.log(`[notification-service] Queue backend: ${process.env.QUEUE_BACKEND || 'memory'}`);
-  console.log(`[notification-service] Email backend: ${process.env.EMAIL_BACKEND || 'console'}`);
-  startPolling();
-});
+if (require.main === module) {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`[notification-service] Health endpoint on port ${PORT}`);
+    console.log(`[notification-service] Queue backend: ${process.env.QUEUE_BACKEND || 'memory'}`);
+    console.log(`[notification-service] Email backend: ${process.env.EMAIL_BACKEND || 'console'}`);
+    startPolling();
+  });
+}
 
 module.exports = app;

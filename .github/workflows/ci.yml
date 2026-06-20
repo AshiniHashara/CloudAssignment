@@ -38,7 +38,7 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install flake8 pytest
-          flake8 src/
+          flake8 .
           pytest tests/ -v
 
       - name: Install dependencies & lint (Node)
@@ -96,10 +96,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.14.4
+
       - name: Install kubeconform
         run: |
           curl -L https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz
           mv kubeconform /usr/local/bin/
-      - name: Validate manifests
+
+      - name: Validate static manifests (base + argocd)
         run: |
-          find k8s/ -name "*.yaml" | xargs kubeconform -strict -summary
+          find k8s/base k8s/argocd -name "*.yaml" | xargs kubeconform -strict -ignore-missing-schemas -summary
+
+      - name: Render and validate Helm charts
+        run: |
+          set -e
+          for chart in k8s/charts/*/; do
+            name=$(basename "$chart")
+            for values in "$chart"values*.yaml; do
+              echo "== Rendering $name with $(basename "$values") =="
+              helm template "$name" "$chart" -f "$values" \
+                | kubeconform -strict -ignore-missing-schemas -summary
+            done
+          done

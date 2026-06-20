@@ -14,7 +14,7 @@ import logging
 from datetime import datetime
 from flask import Flask, jsonify, request, abort
 import boto3
-from boto3.dynamodb.conditions import Key, Attr
+from boto3.dynamodb.conditions import Attr
 from decimal import Decimal
 
 # ---------------------------------------------------------------------------
@@ -192,12 +192,12 @@ class DynamoDBStore:
             response = self.table.scan(FilterExpression=Attr("category").eq(category))
         else:
             response = self.table.scan()
-        
+
         items = response.get("Items", [])
         if search:
             q = search.lower()
             items = [
-                i for i in items 
+                i for i in items
                 if q in i.get("name", "").lower() or q in i.get("description", "").lower()
             ]
         return self._decimal_to_float(items)
@@ -230,7 +230,7 @@ class DynamoDBStore:
         update_expr = "set "
         attr_values = {}
         attr_names = {}
-        
+
         fields = ["name", "description", "price", "category", "stock", "imageUrl"]
         updates = []
         for field in fields:
@@ -240,20 +240,20 @@ class DynamoDBStore:
                     val = Decimal(str(val))
                 elif field == "stock":
                     val = int(val)
-                
+
                 updates.append(f"#{field} = :{field}")
                 attr_values[f":{field}"] = val
                 attr_names[f"#{field}"] = field
-        
+
         if not updates:
             return self.get_by_id(product_id)
-            
+
         updates.append("#updatedAt = :updatedAt")
         attr_values[":updatedAt"] = datetime.utcnow().isoformat() + "Z"
         attr_names["#updatedAt"] = "updatedAt"
-        
+
         update_expr += ", ".join(updates)
-        
+
         response = self.table.update_item(
             Key={"id": product_id},
             UpdateExpression=update_expr,
