@@ -124,6 +124,18 @@ jobs:
             echo "http://${HOSTNAME}" >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      - name: Force-refresh and sync all ArgoCD Applications
+        if: always()
+        run: |
+          for app in $(kubectl get applications -n argocd -o jsonpath='{.items[*].metadata.name}'); do
+            kubectl patch application "$app" -n argocd --type merge -p '{"metadata":{"annotations":{"argocd.argoproj.io/refresh":"hard"}}}' || true
+          done
+          sleep 20
+          for app in $(kubectl get applications -n argocd -o jsonpath='{.items[*].metadata.name}'); do
+            kubectl patch application "$app" -n argocd --type merge -p '{"operation":{"sync":{"revision":"","prune":true,"syncStrategy":{"hook":{}}}}}' || true
+          done
+          sleep 15
+
       - name: Diagnostics (ArgoCD app status, pods, ingress, events)
         if: always()
         run: |
@@ -133,19 +145,14 @@ jobs:
             kubectl get applications -n argocd -o wide 2>&1 || true
             echo '```'
 
-            echo "## ArgoCD Application conditions/errors (cloudmart-prod)"
-            echo '```'
-            kubectl get application cloudmart-prod -n argocd -o jsonpath='{.status.conditions}' 2>&1 || true
-            echo ""
-            kubectl get application cloudmart-prod -n argocd -o jsonpath='{.status.operationState}' 2>&1 || true
-            echo '```'
-
-            echo "## ArgoCD Application conditions/errors (cloudmart-staging)"
-            echo '```'
-            kubectl get application cloudmart-staging -n argocd -o jsonpath='{.status.conditions}' 2>&1 || true
-            echo ""
-            kubectl get application cloudmart-staging -n argocd -o jsonpath='{.status.operationState}' 2>&1 || true
-            echo '```'
+            for app in $(kubectl get applications -n argocd -o jsonpath='{.items[*].metadata.name}'); do
+              echo "## Conditions/operationState: $app"
+              echo '```'
+              kubectl get application "$app" -n argocd -o jsonpath='{.status.conditions}' 2>&1 || true
+              echo ""
+              kubectl get application "$app" -n argocd -o jsonpath='{.status.operationState.message}' 2>&1 || true
+              echo '```'
+            done
 
             echo "## ArgoCD repo-server logs"
             echo '```'
