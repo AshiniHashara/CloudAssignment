@@ -214,6 +214,11 @@ resource "helm_release" "keda" {
   namespace        = "keda"
   create_namespace = true
 
+  set {
+    name  = "serviceAccount.operator.annotations.eks\\.amazonaws\\.com/role-arn"
+    value = module.eks.keda_operator_role_arn
+  }
+
   depends_on = [module.eks]
 }
 
