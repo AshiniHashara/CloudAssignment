@@ -1,4 +1,5 @@
-# ---- Stage 1: Install dependencies ----
+# Build and runtime for order-service
+# Local verification: docker build -t cloudmart/order-service ./services/order-service
 FROM node:20-alpine AS builder
 
 WORKDIR /build
