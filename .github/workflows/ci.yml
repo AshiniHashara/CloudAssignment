@@ -83,6 +83,7 @@ jobs:
           format: table
           exit-code: 1          # Fail pipeline on CRITICAL
           severity: CRITICAL
+          ignore-unfixed: true  # don't block on upstream OS CVEs with no patch available yet
 
       - name: Push to ECR
         run: |

@@ -13,6 +13,9 @@ RUN npm run build
 # ---- Stage 2: Serve with Nginx ----
 FROM nginx:1.27-alpine
 
+# Pull in patched OS packages (e.g. openssl) not yet baked into the base image tag
+RUN apk update && apk upgrade --no-cache
+
 # Remove default nginx config
 RUN rm /etc/nginx/conf.d/default.conf
 
