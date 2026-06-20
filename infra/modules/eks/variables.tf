@@ -29,3 +29,7 @@ variable "sqs_orders_queue_arn" {
 variable "rds_secret_arn" {
   type = string
 }
+
+variable "velero_bucket_arn" {
+  type = string
+}

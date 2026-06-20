@@ -67,7 +67,7 @@ resource "aws_eks_node_group" "main" {
   node_group_name = "cloudmart-nodes"
   node_role_arn   = aws_iam_role.eks_nodes.arn
   subnet_ids      = values(var.private_app_subnet_ids)
-  instance_types = ["t3.small"]
+  instance_types  = ["t3.medium"]
 
   scaling_config {
     desired_size = 2

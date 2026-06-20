@@ -1,6 +1,6 @@
 resource "aws_sqs_queue" "orders_dlq" {
   name                      = "cloudmart-orders-dlq"
-  message_retention_seconds = 1209600   # 14 days
+  message_retention_seconds = 1209600 # 14 days
   kms_master_key_id         = var.kms_key_arn
   tags                      = var.common_tags
 }

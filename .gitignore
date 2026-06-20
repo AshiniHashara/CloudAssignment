@@ -1,0 +1,32 @@
+# Terraform
+**/.terraform/
+*.tfplan
+*.tfplan.binary
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Env files
+.env
+.env.local
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

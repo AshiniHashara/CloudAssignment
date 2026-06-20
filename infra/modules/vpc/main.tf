@@ -2,7 +2,7 @@ resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_support   = true
   enable_dns_hostnames = true
-  tags = merge(var.common_tags, { Name = "cloudmart-vpc" })
+  tags                 = merge(var.common_tags, { Name = "cloudmart-vpc" })
 }
 
 # Internet Gateway
@@ -20,7 +20,7 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
   tags = merge(var.common_tags, {
     Name                     = "cloudmart-public-${each.key}"
-    "kubernetes.io/role/elb" = "1"   # Required for ALB controller
+    "kubernetes.io/role/elb" = "1" # Required for ALB controller
   })
 }
 
@@ -33,7 +33,7 @@ resource "aws_subnet" "private_app" {
   tags = merge(var.common_tags, {
     Name                              = "cloudmart-private-app-${each.key}"
     "kubernetes.io/role/internal-elb" = "1"
-    "karpenter.sh/discovery"          = "cloudmart-eks"  # For future Karpenter
+    "karpenter.sh/discovery"          = "cloudmart-eks" # For future Karpenter
   })
 }
 
@@ -43,7 +43,7 @@ resource "aws_subnet" "private_data" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = each.value
   availability_zone = "us-east-${each.key}"
-  tags = merge(var.common_tags, { Name = "cloudmart-private-data-${each.key}" })
+  tags              = merge(var.common_tags, { Name = "cloudmart-private-data-${each.key}" })
 }
 
 # Elastic IPs for NAT Gateways (one per AZ)
@@ -111,7 +111,7 @@ resource "aws_vpc_endpoint" "dynamodb" {
   vpc_id            = aws_vpc.main.id
   service_name      = "com.amazonaws.us-east-1.dynamodb"
   vpc_endpoint_type = "Gateway"
-  route_table_ids   = concat(
+  route_table_ids = concat(
     values(aws_route_table.private_app)[*].id,
     [aws_route_table.private_data.id]
   )
@@ -189,7 +189,7 @@ resource "aws_iam_role_policy" "flow_logs" {
     Version = "2012-10-17"
     Statement = [{
       Effect   = "Allow"
-      Action   = ["logs:CreateLogGroup","logs:CreateLogStream","logs:PutLogEvents","logs:DescribeLogGroups","logs:DescribeLogStreams"]
+      Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogGroups", "logs:DescribeLogStreams"]
       Resource = "*"
     }]
   })
