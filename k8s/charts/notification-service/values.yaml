@@ -1,5 +1,5 @@
 image:
-  repository: <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/cloudmart/notification-service
+  repository: 378780514485.dkr.ecr.us-east-1.amazonaws.com/cloudmart/notification-service
   tag: latest
   pullPolicy: IfNotPresent
 
@@ -14,7 +14,7 @@ resources:
     memory: "512Mi"
 
 config:
-  sqsQueueUrl: "https://sqs.us-east-1.amazonaws.com/<AWS_ACCOUNT_ID>/cloudmart-orders"
+  sqsQueueUrl: "https://sqs.us-east-1.amazonaws.com/378780514485/cloudmart-orders"
   awsRegion: us-east-1
 
 serviceAccount:

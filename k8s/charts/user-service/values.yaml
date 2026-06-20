@@ -1,5 +1,5 @@
 image:
-  repository: <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/cloudmart/user-service
+  repository: 378780514485.dkr.ecr.us-east-1.amazonaws.com/cloudmart/user-service
   tag: latest
   pullPolicy: IfNotPresent
 

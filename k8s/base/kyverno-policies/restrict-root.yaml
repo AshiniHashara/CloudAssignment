@@ -54,4 +54,4 @@ spec:
         pattern:
           spec:
             containers:
-              - image: "<AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/cloudmart/*"
+              - image: "378780514485.dkr.ecr.us-east-1.amazonaws.com/cloudmart/*"

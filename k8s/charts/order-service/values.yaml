@@ -1,5 +1,5 @@
 image:
-  repository: <AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/cloudmart/order-service
+  repository: 378780514485.dkr.ecr.us-east-1.amazonaws.com/cloudmart/order-service
   tag: latest
   pullPolicy: IfNotPresent
 
@@ -23,7 +23,7 @@ hpa:
   targetCPUUtilizationPercentage: 60
 
 config:
-  sqsQueueUrl: "https://sqs.us-east-1.amazonaws.com/<AWS_ACCOUNT_ID>/cloudmart-orders"
+  sqsQueueUrl: "https://sqs.us-east-1.amazonaws.com/378780514485/cloudmart-orders"
   awsRegion: us-east-1
 
 serviceAccount:
