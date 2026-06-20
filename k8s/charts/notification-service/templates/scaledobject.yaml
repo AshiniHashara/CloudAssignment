@@ -1,4 +1,13 @@
 apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: keda-sqs-auth
+  namespace: {{ .Values.namespace }}
+spec:
+  podIdentity:
+    provider: aws-eks
+---
+apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: notification-service-scaler
@@ -15,4 +24,4 @@ spec:
         queueLength: "5"
         awsRegion: {{ .Values.config.awsRegion }}
       authenticationRef:
-        name: keda-sqs-auth # This would need to be created or configured
+        name: keda-sqs-auth
