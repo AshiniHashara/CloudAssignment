@@ -117,6 +117,9 @@ module "eks" {
   sqs_orders_queue_arn   = module.sqs.queue_arn
   rds_secret_arn         = module.secrets.rds_secret_arn
   velero_bucket_arn      = module.backup.bucket_arn
+
+  github_actions_role_arn = var.github_actions_role_arn
+  cluster_admin_user_arns = var.cluster_admin_user_arns
 }
 
 module "waf" {
@@ -175,6 +178,41 @@ resource "helm_release" "argocd" {
     name  = "server.service.type"
     value = "ClusterIP"
   }
+
+  depends_on = [module.eks]
+}
+
+resource "helm_release" "argo_rollouts" {
+  name             = "argo-rollouts"
+  repository       = "https://argoproj.github.io/argo-helm"
+  chart            = "argo-rollouts"
+  namespace        = "argo-rollouts"
+  create_namespace = true
+
+  depends_on = [module.eks]
+}
+
+resource "helm_release" "external_secrets" {
+  name             = "external-secrets"
+  repository       = "https://charts.external-secrets.io"
+  chart            = "external-secrets"
+  namespace        = "external-secrets"
+  create_namespace = true
+
+  set {
+    name  = "installCRDs"
+    value = "true"
+  }
+
+  depends_on = [module.eks]
+}
+
+resource "helm_release" "keda" {
+  name             = "keda"
+  repository       = "https://kedacore.github.io/charts"
+  chart            = "keda"
+  namespace        = "keda"
+  create_namespace = true
 
   depends_on = [module.eks]
 }
