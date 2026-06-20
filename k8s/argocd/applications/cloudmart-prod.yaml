@@ -1,14 +1,14 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: cloudmart-prod
+  name: cloudmart-prod-frontend
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: https://github.com/AshiniHashara/CloudAssignment.git
     targetRevision: main
-    path: k8s/charts
+    path: k8s/charts/frontend
     helm:
       valueFiles:
         - values-prod.yaml
@@ -25,14 +25,206 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: cloudmart-staging
+  name: cloudmart-prod-product-service
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/AshiniHashara/CloudAssignment.git
+    targetRevision: main
+    path: k8s/charts/product-service
+    helm:
+      valueFiles:
+        - values-prod.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cloudmart-prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudmart-prod-order-service
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/AshiniHashara/CloudAssignment.git
+    targetRevision: main
+    path: k8s/charts/order-service
+    helm:
+      valueFiles:
+        - values-prod.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cloudmart-prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudmart-prod-user-service
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/AshiniHashara/CloudAssignment.git
+    targetRevision: main
+    path: k8s/charts/user-service
+    helm:
+      valueFiles:
+        - values-prod.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cloudmart-prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudmart-prod-notification-service
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/AshiniHashara/CloudAssignment.git
+    targetRevision: main
+    path: k8s/charts/notification-service
+    helm:
+      valueFiles:
+        - values-prod.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cloudmart-prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudmart-staging-frontend
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: https://github.com/AshiniHashara/CloudAssignment.git
     targetRevision: develop
-    path: k8s/charts
+    path: k8s/charts/frontend
+    helm:
+      valueFiles:
+        - values-staging.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cloudmart-staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudmart-staging-product-service
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/AshiniHashara/CloudAssignment.git
+    targetRevision: develop
+    path: k8s/charts/product-service
+    helm:
+      valueFiles:
+        - values-staging.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cloudmart-staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudmart-staging-order-service
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/AshiniHashara/CloudAssignment.git
+    targetRevision: develop
+    path: k8s/charts/order-service
+    helm:
+      valueFiles:
+        - values-staging.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cloudmart-staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudmart-staging-user-service
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/AshiniHashara/CloudAssignment.git
+    targetRevision: develop
+    path: k8s/charts/user-service
+    helm:
+      valueFiles:
+        - values-staging.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cloudmart-staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudmart-staging-notification-service
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/AshiniHashara/CloudAssignment.git
+    targetRevision: develop
+    path: k8s/charts/notification-service
     helm:
       valueFiles:
         - values-staging.yaml
