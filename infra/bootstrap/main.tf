@@ -36,8 +36,9 @@ resource "aws_iam_openid_connect_provider" "github" {
   tags            = local.common_tags
 }
 
-# Trusted by: PRs against this repo (plan-only) and pushes to main (plan + apply).
-# The workflow itself gates apply to main via a "production" GitHub Environment review.
+# Trusted by: PRs against this repo (plan-only), pushes to main (prod apply/build),
+# and pushes to develop (staging build/push). The workflow itself gates the
+# terraform apply step to main via a "production" GitHub Environment review.
 resource "aws_iam_role" "github_actions" {
   name = "cloudmart-github-actions-role"
   assume_role_policy = jsonencode({
@@ -53,6 +54,7 @@ resource "aws_iam_role" "github_actions" {
         StringLike = {
           "token.actions.githubusercontent.com:sub" = [
             "repo:${local.repo}:ref:refs/heads/main",
+            "repo:${local.repo}:ref:refs/heads/develop",
             "repo:${local.repo}:pull_request"
           ]
         }
