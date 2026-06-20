@@ -1,7 +1,7 @@
 # ADR-001: Kubernetes Node Instance Type
 
 ## Status
-Accepted
+Accepted (revised)
 
 ## Context
 CloudMart's EKS managed node group (`infra/modules/eks/main.tf`) hosts five
@@ -22,44 +22,57 @@ We compared three EC2 instance families for the worker node group:
 | t3.medium | 2 | 4 GiB | ~$0.0416 | x86_64 |
 | t4g.medium | 2 | 4 GiB | ~$0.0336 | ARM64 (Graviton2) |
 
+This ADR originally chose t3.medium on capacity grounds (see "Original
+reasoning" under Alternatives). That choice was invalidated by an actual
+account-level restriction discovered during the first real `terraform
+apply`: the node group failed with `AsgInstanceLaunchFailures` —
+`InvalidParameterCombination - The specified instance type is not eligible
+for Free Tier` — confirmed via `aws ec2 describe-instance-types --filters
+"Name=free-tier-eligible,Values=true"`, which returned only
+`t3.micro`, `t3.small`, `t4g.micro`, `t4g.small` (plus two `*-flex.large`
+types) for this account. t3.medium and t4g.medium are both off the table
+here regardless of their cost/capacity merits — this account, like the
+GuardDuty restriction documented in `infra/environments/prod/terraform.tfvars`,
+is a sandbox/academic account that hard-blocks non-Free-Tier resources.
+
 ## Decision
-Use **t3.medium** for the managed node group (2–6 nodes, desired 2).
-
-t3.medium doubles the RAM of t3.small for the same vCPU count, which
-matters more than raw compute here: with 5 services × 2+ replicas plus
-DaemonSets (CNI, kube-proxy, CloudWatch agent) on only 2 nodes at steady
-state, t3.small's 2 GiB frequently leaves too little allocatable memory
-once kube-reserved/system-reserved overhead is subtracted, causing pods to
-stay Pending instead of scheduling. t3.medium's ~$30/month for 2 nodes
-fits comfortably under the $50 budget alarm while leaving room for HPA to
-scale out under load-test demonstrations.
-
-t4g.medium (Graviton/ARM) is ~20% cheaper than t3.medium for the same
-vCPU/RAM, but was rejected for this iteration — see Alternatives.
+Use **t3.small** for the managed node group (2–6 nodes, desired 2) — it's
+the only one of the three compared types this account will actually
+provision.
 
 ## Consequences
 **Easier:**
-- Pods schedule reliably at 2-node steady state without memory pressure.
-- Headroom for the HPA demo (CPU-based scale-out 2→6 replicas) without
-  needing to also scale nodes mid-demo.
+- This is the only option of the three that the account will actually let
+  us provision at all — it isn't a tradeoff, it's a hard constraint.
+- Cheapest of the three: ~$15/month for 2 nodes, leaving the most headroom
+  under the $50 budget alarm.
 
 **Harder:**
-- ~2x the compute cost of t3.small ($30/month vs $15/month for 2 nodes),
-  consuming a larger share of the $50 monthly budget.
-- Missed the ~20% additional savings available from Graviton/ARM nodes.
+- 2 GiB RAM per node is tight once 5 services' replicas plus required
+  DaemonSets (CNI, kube-proxy, CloudWatch agent) are scheduled on only 2
+  nodes — more exposed to pods staying Pending during HPA scale-out or
+  rolling updates than t3.medium would have been. Mitigated by keeping
+  each service's resource `requests` modest (see each chart's
+  `values.yaml`) and watching `kubectl get pods -n cloudmart-prod` during
+  the load-test/autoscaling demo checkpoint for Pending pods; if that
+  becomes a real problem, the node group's `max_size` (already 6) gives
+  room to scale out nodes rather than resize them.
 
 ## Alternatives Considered
-1. **t3.small** — Rejected. Cheapest option, but 2 GiB RAM per node is too
-   tight once 5 services' replicas plus required DaemonSets are scheduled
-   on only 2 nodes; would force premature node scale-out (defeating the
-   cost savings) or pod scheduling failures during the live demo.
-2. **t4g.medium (Graviton, ARM64)** — Rejected for now, not on cost or
-   capacity grounds (it wins on both) but on team risk: all five service
-   Dockerfiles use multi-stage builds with single-architecture base images
+1. **t3.medium** — Original decision; rejected on retry. Doubles t3.small's
+   RAM for the same vCPU, which would have given more scheduling headroom,
+   but `aws_eks_node_group` creation fails outright on this account
+   (`AsgInstanceLaunchFailures` / not Free-Tier-eligible). Not a
+   cost/capacity tradeoff, an account-enforced exclusion.
+2. **t4g.medium (Graviton, ARM64)** — Rejected on two independent grounds.
+   First, the same Free-Tier restriction excludes it on this account.
+   Second, even if it were available: all five service Dockerfiles use
+   multi-stage builds with single-architecture base images
    (`python:3.11-slim`, `node:20-alpine`, `nginx:alpine`) and CI currently
    builds/pushes a single-arch image per service. Moving to Graviton nodes
    would require multi-arch image builds (`docker buildx`) across all five
    services and verifying every Python/Node native dependency has ARM64
-   wheels/binaries, which is more engineering risk than the assignment
-   timeline justifies. This is the better long-term choice and is the
-   natural next ADR/iteration once multi-arch CI is in place.
+   wheels/binaries. `t4g.small` *is* Free-Tier-eligible on this account, so
+   this remains the natural next ADR/iteration once multi-arch CI is in
+   place — likely a better long-term choice than t3.small on cost grounds
+   alone (~$0.0168/hr vs ~$0.0208/hr).
