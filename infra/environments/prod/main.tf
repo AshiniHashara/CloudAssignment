@@ -96,6 +96,7 @@ module "monitoring" {
 }
 
 module "guardduty" {
+  count       = var.enable_guardduty ? 1 : 0
   source      = "../../modules/guardduty"
   common_tags = local.common_tags
   alert_email = var.alert_email
@@ -107,4 +108,4 @@ output "ecr_base_url" { value = module.ecr.base_url }
 output "sqs_queue_url" { value = module.sqs.queue_url }
 output "rds_endpoint" { value = module.rds.endpoint }
 output "velero_bucket" { value = module.backup.bucket_name }
-output "guardduty_detector_id" { value = module.guardduty.detector_id }
+output "guardduty_detector_id" { value = var.enable_guardduty ? module.guardduty[0].detector_id : null }
