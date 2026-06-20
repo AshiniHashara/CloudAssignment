@@ -27,6 +27,6 @@ USER appuser
 EXPOSE 8002
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD wget -qO- http://localhost:8002/health || exit 1
+  CMD wget -qO- http://127.0.0.1:8002/health || exit 1
 
 CMD ["node", "src/index.js"]
