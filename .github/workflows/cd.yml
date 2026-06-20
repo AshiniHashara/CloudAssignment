@@ -5,6 +5,12 @@ on:
     workflows: ["CI"]
     types: [completed]
     branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to treat as the deploy target (main or develop)"
+        required: true
+        default: develop
 
 permissions:
   contents: write
@@ -16,18 +22,34 @@ env:
 jobs:
   update-gitops-manifests:
     name: Bump Helm image tags (triggers ArgoCD sync)
-    if: github.event.workflow_run.conclusion == 'success'
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    outputs:
+      branch: ${{ steps.resolve.outputs.branch }}
     steps:
+      - id: resolve
+        name: Resolve target branch
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "branch=${{ github.event.inputs.branch }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "branch=${{ github.event.workflow_run.head_branch }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_branch }}
+          ref: ${{ steps.resolve.outputs.branch }}
 
       - name: Bump image tag for every service's environment values file
         env:
           SHA: ${{ github.event.workflow_run.head_sha }}
-          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          BRANCH: ${{ steps.resolve.outputs.branch }}
         run: |
+          if [ -z "$SHA" ]; then
+            echo "Manual dispatch, no new SHA to bump — skipping image tag update."
+            exit 0
+          fi
+
           if [ "$BRANCH" = "main" ]; then
             ENV_FILE_SUFFIX="prod"
           else
@@ -43,9 +65,12 @@ jobs:
 
       - name: Commit & push (ArgoCD watches this branch and syncs automatically)
         env:
-          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          BRANCH: ${{ steps.resolve.outputs.branch }}
           SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
+          if [ -z "$SHA" ]; then
+            exit 0
+          fi
           git config user.name "cloudmart-cd-bot"
           git config user.email "cd-bot@cloudmart.internal"
           git add k8s/charts/*/values-prod.yaml k8s/charts/*/values-staging.yaml
@@ -59,7 +84,7 @@ jobs:
   get-deployment-url:
     name: Fetch frontend URL
     needs: update-gitops-manifests
-    if: github.event.workflow_run.conclusion == 'success'
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
@@ -72,13 +97,14 @@ jobs:
 
       - name: Wait for ArgoCD sync and fetch ALB hostname
         env:
-          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          BRANCH: ${{ needs.update-gitops-manifests.outputs.branch }}
         run: |
           if [ "$BRANCH" = "main" ]; then
             NAMESPACE="cloudmart-prod"
           else
             NAMESPACE="cloudmart-staging"
           fi
+          echo "NAMESPACE=$NAMESPACE" >> "$GITHUB_ENV"
 
           HOSTNAME=""
           for i in $(seq 1 20); do
@@ -92,8 +118,33 @@ jobs:
 
           if [ -z "$HOSTNAME" ]; then
             echo "## Frontend URL ($NAMESPACE)" >> "$GITHUB_STEP_SUMMARY"
-            echo "Ingress had no ALB hostname yet after waiting. ArgoCD syncs on its own ~3min loop; re-run this job or check \`kubectl get ingress -n $NAMESPACE\` shortly." >> "$GITHUB_STEP_SUMMARY"
+            echo "Ingress had no ALB hostname yet after waiting." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "## Frontend URL ($NAMESPACE)" >> "$GITHUB_STEP_SUMMARY"
             echo "http://${HOSTNAME}" >> "$GITHUB_STEP_SUMMARY"
           fi
+
+      - name: Diagnostics (ArgoCD app status, pods, ingress, events)
+        if: always()
+        run: |
+          echo "## ArgoCD Applications" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          kubectl get applications -n argocd -o wide >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+          echo "## Pods in $NAMESPACE" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          kubectl get pods -n "$NAMESPACE" -o wide >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+          echo "## Ingress in $NAMESPACE" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          kubectl get ingress -n "$NAMESPACE" -o wide >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
+          kubectl describe ingress -n "$NAMESPACE" >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+          echo "## ALB controller pods/logs" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          kubectl get pods -n kube-system -l app.kubernetes.io/name=aws-load-balancer-controller >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
+          kubectl logs -n kube-system -l app.kubernetes.io/name=aws-load-balancer-controller --tail=50 >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
