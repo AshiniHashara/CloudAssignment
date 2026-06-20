@@ -127,24 +127,26 @@ jobs:
       - name: Diagnostics (ArgoCD app status, pods, ingress, events)
         if: always()
         run: |
-          echo "## ArgoCD Applications" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          kubectl get applications -n argocd -o wide >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## ArgoCD Applications"
+            echo '```'
+            kubectl get applications -n argocd -o wide 2>&1 || true
+            echo '```'
 
-          echo "## Pods in $NAMESPACE" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          kubectl get pods -n "$NAMESPACE" -o wide >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
+            echo "## Pods in $NAMESPACE"
+            echo '```'
+            kubectl get pods -n "$NAMESPACE" -o wide 2>&1 || true
+            echo '```'
 
-          echo "## Ingress in $NAMESPACE" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          kubectl get ingress -n "$NAMESPACE" -o wide >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
-          kubectl describe ingress -n "$NAMESPACE" >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
+            echo "## Ingress in $NAMESPACE"
+            echo '```'
+            kubectl get ingress -n "$NAMESPACE" -o wide 2>&1 || true
+            kubectl describe ingress -n "$NAMESPACE" 2>&1 || true
+            echo '```'
 
-          echo "## ALB controller pods/logs" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          kubectl get pods -n kube-system -l app.kubernetes.io/name=aws-load-balancer-controller >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
-          kubectl logs -n kube-system -l app.kubernetes.io/name=aws-load-balancer-controller --tail=50 >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
+            echo "## ALB controller pods/logs"
+            echo '```'
+            kubectl get pods -n kube-system -l app.kubernetes.io/name=aws-load-balancer-controller 2>&1 || true
+            kubectl logs -n kube-system -l app.kubernetes.io/name=aws-load-balancer-controller --tail=50 2>&1 || true
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
