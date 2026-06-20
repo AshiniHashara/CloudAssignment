@@ -134,6 +134,31 @@ resource "aws_iam_role_policy" "user_service" {
   })
 }
 
+# AWS Load Balancer Controller: manages ALBs/NLBs created from Ingress/Service resources
+resource "aws_iam_role" "alb_controller" {
+  name = "cloudmart-alb-controller-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Federated = aws_iam_openid_connect_provider.eks.arn }
+      Action    = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "${local.oidc_issuer}:sub" = "system:serviceaccount:kube-system:aws-load-balancer-controller"
+          "${local.oidc_issuer}:aud" = "sts.amazonaws.com"
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "alb_controller" {
+  name   = "cloudmart-alb-controller-policy"
+  role   = aws_iam_role.alb_controller.id
+  policy = file("${path.module}/policies/aws-load-balancer-controller-policy.json")
+}
+
 # Velero: backs up Kubernetes resources + EBS volume snapshots to the DR bucket
 resource "aws_iam_role" "velero" {
   name = "cloudmart-velero-role"

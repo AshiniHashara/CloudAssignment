@@ -14,7 +14,7 @@ on:
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
 
 env:
   AWS_REGION: us-east-1
@@ -94,3 +94,31 @@ jobs:
       - name: Terraform apply
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform apply -input=false -auto-approve
+
+      - name: Apply ArgoCD Application manifests
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          CLUSTER_NAME=$(terraform output -raw eks_cluster_name)
+          aws eks update-kubeconfig --name "$CLUSTER_NAME" --region "$AWS_REGION"
+          kubectl apply -f ../../../k8s/argocd/applications/
+
+      - name: Record WAF ACL ARN in the frontend chart's prod values
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          WAF_ARN=$(terraform output -raw waf_acl_arn)
+          VALUES_FILE="../../../k8s/charts/frontend/values-prod.yaml"
+          if grep -q "^wafAclArn:" "$VALUES_FILE"; then
+            sed -i -E "s|^wafAclArn:.*|wafAclArn: \"${WAF_ARN}\"|" "$VALUES_FILE"
+          else
+            echo "wafAclArn: \"${WAF_ARN}\"" >> "$VALUES_FILE"
+          fi
+
+          git config user.name "cloudmart-cd-bot"
+          git config user.email "cd-bot@cloudmart.internal"
+          git add "$VALUES_FILE"
+          if git diff --cached --quiet; then
+            echo "WAF ACL ARN unchanged, nothing to commit"
+          else
+            git commit -m "ci: record WAF ACL ARN in frontend prod values"
+            git push origin HEAD:main
+          fi

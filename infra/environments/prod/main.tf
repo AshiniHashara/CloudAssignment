@@ -1,6 +1,8 @@
 terraform {
   required_providers {
-    aws = { source = "hashicorp/aws", version = "~> 5.0" }
+    aws        = { source = "hashicorp/aws", version = "~> 5.0" }
+    kubernetes = { source = "hashicorp/kubernetes", version = "~> 2.31" }
+    helm       = { source = "hashicorp/helm", version = "~> 2.14" }
   }
 
   backend "s3" {
@@ -14,6 +16,26 @@ terraform {
 
 provider "aws" {
   region = "us-east-1"
+}
+
+# Configured against the EKS cluster created by module.eks below — auth uses a
+# short-lived token from the AWS provider's own credentials, never a static kubeconfig.
+data "aws_eks_cluster_auth" "this" {
+  name = module.eks.cluster_name
+}
+
+provider "kubernetes" {
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_ca_certificate)
+  token                  = data.aws_eks_cluster_auth.this.token
+}
+
+provider "helm" {
+  kubernetes {
+    host                   = module.eks.cluster_endpoint
+    cluster_ca_certificate = base64decode(module.eks.cluster_ca_certificate)
+    token                  = data.aws_eks_cluster_auth.this.token
+  }
 }
 
 locals {
@@ -97,6 +119,66 @@ module "eks" {
   velero_bucket_arn      = module.backup.bucket_arn
 }
 
+module "waf" {
+  source      = "../../modules/waf"
+  common_tags = local.common_tags
+}
+
+resource "helm_release" "aws_load_balancer_controller" {
+  name             = "aws-load-balancer-controller"
+  repository       = "https://aws.github.io/eks-charts"
+  chart            = "aws-load-balancer-controller"
+  namespace        = "kube-system"
+  create_namespace = false
+
+  set {
+    name  = "clusterName"
+    value = module.eks.cluster_name
+  }
+
+  set {
+    name  = "region"
+    value = "us-east-1"
+  }
+
+  set {
+    name  = "vpcId"
+    value = module.vpc.vpc_id
+  }
+
+  set {
+    name  = "serviceAccount.create"
+    value = "true"
+  }
+
+  set {
+    name  = "serviceAccount.name"
+    value = "aws-load-balancer-controller"
+  }
+
+  set {
+    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+    value = module.eks.alb_controller_role_arn
+  }
+
+  depends_on = [module.eks]
+}
+
+resource "helm_release" "argocd" {
+  name             = "argocd"
+  repository       = "https://argoproj.github.io/argo-helm"
+  chart            = "argo-cd"
+  namespace        = "argocd"
+  create_namespace = true
+
+  set {
+    name  = "server.service.type"
+    value = "ClusterIP"
+  }
+
+  depends_on = [module.eks]
+}
+
 module "monitoring" {
   source      = "../../modules/monitoring"
   common_tags = local.common_tags
@@ -117,3 +199,4 @@ output "sqs_queue_url" { value = module.sqs.queue_url }
 output "rds_endpoint" { value = module.rds.endpoint }
 output "velero_bucket" { value = module.backup.bucket_name }
 output "guardduty_detector_id" { value = var.enable_guardduty ? module.guardduty[0].detector_id : null }
+output "waf_acl_arn" { value = module.waf.web_acl_arn }
