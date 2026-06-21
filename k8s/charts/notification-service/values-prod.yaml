@@ -1,5 +1,5 @@
 namespace: cloudmart-prod
 image:
-  tag: "d388b566d20ebac7d28337db2cc98df04e1db208"
+  tag: "8a690b0bc8dffe8fb35ad69287f2481ce645e0d0"
 serviceAccount:
   irsaRoleArn: "arn:aws:iam::378780514485:role/cloudmart-notification-service-role"

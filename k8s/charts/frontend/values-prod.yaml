@@ -1,4 +1,4 @@
 namespace: cloudmart-prod
 wafAclArn: "arn:aws:wafv2:us-east-1:378780514485:regional/webacl/cloudmart-waf/957f1ea7-dbe3-4987-9b00-e591724170c3"
 image:
-  tag: "d388b566d20ebac7d28337db2cc98df04e1db208"
+  tag: "8a690b0bc8dffe8fb35ad69287f2481ce645e0d0"
