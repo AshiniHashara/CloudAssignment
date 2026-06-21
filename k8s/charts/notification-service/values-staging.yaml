@@ -1,4 +1,6 @@
 namespace: cloudmart-staging
 replicaCount: 1
+image:
+  tag: latest
 serviceAccount:
   irsaRoleArn: "arn:aws:iam::378780514485:role/cloudmart-notification-service-role"
