@@ -20,7 +20,7 @@ afterEach(() => {
 test('renders the CloudMart header', async () => {
   mockFetchOnce({ products: [] });
   render(<App />);
-  expect(screen.getByText('CloudMart-b')).toBeInTheDocument();
+  expect(screen.getByText('CloudMart-test')).toBeInTheDocument();
   await screen.findByText(/No products found/i);
 });
 
