@@ -225,7 +225,7 @@ function App() {
       {/* Header */}
       <header style={styles.header}>
         <div style={styles.logo} onClick={() => setPage('products')}>
-          CloudMart-test
+          CloudMart-test-test
         </div>
         <nav style={styles.nav}>
           <button style={styles.navBtn} onClick={() => setPage('products')}>Products</button>
