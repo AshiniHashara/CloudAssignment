@@ -99,6 +99,89 @@ spec:
         - protocol: UDP
           port: 53
 ---
+# ALB (target-type: ip, ENIs in public subnets) → frontend, port 80.
+# No other rule opens frontend's ingress, so default-deny-all would otherwise
+# block the ALB's health checks and all external traffic to the site.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-alb-to-frontend
+  namespace: cloudmart-prod
+spec:
+  podSelector:
+    matchLabels:
+      app: frontend
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: 10.0.1.0/24
+        - ipBlock:
+            cidr: 10.0.2.0/24
+      ports:
+        - protocol: TCP
+          port: 80
+---
+# frontend → product-service, order-service, user-service (egress side —
+# the ingress-only allow-frontend-to-* rules above don't open frontend's own
+# egress, which default-deny-all blocks independently)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-egress-backends
+  namespace: cloudmart-prod
+spec:
+  podSelector:
+    matchLabels:
+      app: frontend
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: product-service
+      ports:
+        - protocol: TCP
+          port: 8001
+    - to:
+        - podSelector:
+            matchLabels:
+              app: order-service
+      ports:
+        - protocol: TCP
+          port: 8002
+    - to:
+        - podSelector:
+            matchLabels:
+              app: user-service
+      ports:
+        - protocol: TCP
+          port: 8003
+---
+# order-service → product-service (egress side — allow-order-to-product above
+# only opens product-service's ingress, not order-service's own egress)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-order-egress-product
+  namespace: cloudmart-prod
+spec:
+  podSelector:
+    matchLabels:
+      app: order-service
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: product-service
+      ports:
+        - protocol: TCP
+          port: 8001
+---
 # product-service → DynamoDB VPC endpoint only
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
