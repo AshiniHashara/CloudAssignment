@@ -1,5 +1,5 @@
 namespace: cloudmart-prod
 image:
-  tag: latest
+  tag: "d388b566d20ebac7d28337db2cc98df04e1db208"
 serviceAccount:
   irsaRoleArn: "arn:aws:iam::378780514485:role/cloudmart-order-service-role"
