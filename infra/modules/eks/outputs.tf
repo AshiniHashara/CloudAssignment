@@ -5,3 +5,4 @@ output "cluster_endpoint" { value = aws_eks_cluster.main.endpoint }
 output "cluster_ca_certificate" { value = aws_eks_cluster.main.certificate_authority[0].data }
 output "alb_controller_role_arn" { value = aws_iam_role.alb_controller.arn }
 output "keda_operator_role_arn" { value = aws_iam_role.keda_operator.arn }
+output "velero_role_arn" { value = aws_iam_role.velero.arn }
