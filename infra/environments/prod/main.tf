@@ -222,6 +222,66 @@ resource "helm_release" "keda" {
   depends_on = [module.eks]
 }
 
+# Backs up Kubernetes resources + EBS volume snapshots to the bucket and IRSA
+# role provisioned by module.backup / module.eks.irsa — neither was wired to
+# an actual running backup agent until this release.
+resource "helm_release" "velero" {
+  name             = "velero"
+  repository       = "https://vmware-tanzu.github.io/helm-charts"
+  chart            = "velero"
+  namespace        = "velero"
+  create_namespace = true
+
+  values = [yamlencode({
+    serviceAccount = {
+      server = {
+        create = true
+        name   = "velero-server"
+        annotations = {
+          "eks.amazonaws.com/role-arn" = module.eks.velero_role_arn
+        }
+      }
+    }
+    # IRSA provides credentials — no static AWS keys needed.
+    credentials = {
+      useSecret = false
+    }
+    configuration = {
+      backupStorageLocation = [{
+        name     = "default"
+        provider = "aws"
+        bucket   = module.backup.bucket_name
+        config   = { region = "us-east-1" }
+      }]
+      volumeSnapshotLocation = [{
+        name     = "default"
+        provider = "aws"
+        config   = { region = "us-east-1" }
+      }]
+    }
+    initContainers = [{
+      name  = "velero-plugin-for-aws"
+      image = "velero/velero-plugin-for-aws:v1.13.1"
+      volumeMounts = [{
+        mountPath = "/target"
+        name      = "plugins"
+      }]
+    }]
+    # Daily backup of every namespace, 7-day retention — matches the RDS
+    # backup retention target (ADR-002) at the Kubernetes-resource layer.
+    schedules = {
+      daily-backup = {
+        schedule = "0 2 * * *"
+        template = {
+          ttl = "168h0m0s"
+        }
+      }
+    }
+  })]
+
+  depends_on = [module.eks, module.backup]
+}
+
 module "monitoring" {
   source      = "../../modules/monitoring"
   common_tags = local.common_tags
