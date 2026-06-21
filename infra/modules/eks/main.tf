@@ -102,6 +102,23 @@ resource "aws_launch_template" "eks_nodes" {
   }
 }
 
+# Adopts the self-managed VPC CNI into the EKS addon system and turns on
+# NetworkPolicy enforcement (off by default — the CNI otherwise accepts
+# NetworkPolicy objects into the API but never programs them into eBPF/iptables).
+resource "aws_eks_addon" "vpc_cni" {
+  cluster_name                = aws_eks_cluster.main.name
+  addon_name                  = "vpc-cni"
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "OVERWRITE"
+
+  configuration_values = jsonencode({
+    enableNetworkPolicy = "true"
+  })
+
+  depends_on = [aws_eks_node_group.main]
+  tags       = var.common_tags
+}
+
 data "tls_certificate" "eks" {
   url = aws_eks_cluster.main.identity[0].oidc[0].issuer
 }
